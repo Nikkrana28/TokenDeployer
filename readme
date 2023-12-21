@@ -1,0 +1,14 @@
+(1)
+
+_first compile the token Contract from Remix IDE and copy its ABI and Bytecode and past in file called metadata.js
+in place of old abi and bytecode and save the code
+
+(2)
+_Set all the env valiables accordingly 
+
+(3)
+run `npm install` in project root folder (make sure you have node installed in system)
+
+(4)
+run `node index.js` in project root folder 
+
