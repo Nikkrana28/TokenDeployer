@@ -8,11 +8,8 @@ const solc = require("solc");
 async function main() {
   const { abi, bytecode } = JSON.parse(await fs.readFile("Demo.json"));
   const network = process.env.ETHEREUM_NETWORK;
-  const web3 = new Web3(
-    new Web3.providers.HttpProvider(
-      `https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,
-    ),
-  );
+  // const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),);
+  const web3 = new Web3(new Web3.providers.HttpProvider(`http://127.0.0.1:8545`,),);
  
   const signer = web3.eth.accounts.privateKeyToAccount(
     '0x' + process.env.SIGNER_PRIVATE_KEY,
@@ -69,8 +66,9 @@ const uniwapRouterABI = [{
 const AddLiquidity = async (token, value, supply)=>{
     const deadlinetime = Number((new Date().getTime() + 1200000) / 1000 ).toFixed(0);
     const network = process.env.ETHEREUM_NETWORK;
-    const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
-    );
+    // const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
+    // );
+    const web3 = new Web3(new Web3.providers.HttpProvider(`http://127.0.0.1:8545`,),);
     console.log(deadlinetime, token)
     const account = web3.eth.accounts.privateKeyToAccount('0x' + process.env.SIGNER_PRIVATE_KEY); 
     const routerContract = new web3.eth.Contract(uniwapRouterABI, process.env.UNISWAPROUTER_ADDRESS);
@@ -98,8 +96,9 @@ const ApproveToken = async (token)=>{
    try {
     const { abi, bytecode } = JSON.parse(await fs.readFile("Demo.json"));
     const network = process.env.ETHEREUM_NETWORK;
-    const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
-    );
+    // const web3 = new Web3(new Web3.providers.HttpProvider(`https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`,),
+    // );
+    const web3 = new Web3(new Web3.providers.HttpProvider(`http://127.0.0.1:8545`,),);
     const account = web3.eth.accounts.privateKeyToAccount('0x' + process.env.SIGNER_PRIVATE_KEY); 
     const routerContract = new web3.eth.Contract(abi, token);
     const data = await routerContract.methods.approve(process.env.UNISWAPROUTER_ADDRESS, 115792089237316195423570985008687907853269984665640564039457584007913129639935n)
@@ -159,5 +158,5 @@ const callingFunc =async()=>{
 }
 
 require("dotenv").config();
-callingFunc()
+callingFunc();
 
