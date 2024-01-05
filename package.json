@@ -11,11 +11,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.6.4",
     "dotenv": "^16.3.1",
     "ethcheck": "^1.0.0",
     "ethereumjs-common": "^1.5.2",
     "ethereumjs-tx": "^2.1.2",
+    "lerna": "^6.1.0",
     "solc": "^0.8.23-fixed",
-    "web3": "^1.8.0"
+    "web3": "^1.8.0",
+    "web3.js.eth": "^4.1.6"
   }
 }

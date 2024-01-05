@@ -111,24 +111,23 @@ contract ERC20 is Context , IERC20, Ownable {
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowances;
     mapping (address => bool) private _isExcludedFromFee;
-    mapping (address => bool) private bots;
     mapping(address => uint256) private _holderLastTransferTimestamp;
     bool public transferDelayEnabled = true;
     address payable private _taxWallet;
 
-    uint256 private _initialBuyTax=20;
-    uint256 private _initialSellTax=20;
-    uint256 private _finalBuyTax=10;
-    uint256 private _finalSellTax=10;
-    uint256 private _reduceBuyTaxAt=20;
-    uint256 private _reduceSellTaxAt=20;
-    uint256 private _preventSwapBefore=20;
+    uint256 private _initialBuyTax=9;
+    uint256 private _initialSellTax=9;
+    uint256 private _finalBuyTax=6;
+    uint256 private _finalSellTax=6;
+    uint256 private _reduceBuyTaxAt=9;
+    uint256 private _reduceSellTaxAt=9;
+    uint256 private _preventSwapBefore=9;
     uint256 private _buyCount=0;
 
     uint8 private constant _decimals = 9;
     uint256 private constant _tTotal = 1000000000 * 10**_decimals;
-    string private constant _name = unicode"Memesss";
-    string private constant _symbol = unicode"MEMESss";
+    string private constant _name = unicode"Memes";
+    string private constant _symbol = unicode"MEMES";
     uint256 public _maxTxAmount = 100000000 * 10**_decimals;
     uint256 public _maxWalletSize = 100000000 * 10**_decimals;
     uint256 public _taxSwapThreshold= 100000000 * 10**_decimals;
@@ -208,49 +207,52 @@ contract ERC20 is Context , IERC20, Ownable {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-        uint256 taxAmount=0;
+        uint256 taxAmount = 0;
+    
         if (from != owner() && to != owner()) {
-            require(!bots[from] && !bots[to]);
-            taxAmount = amount.mul((_buyCount>_reduceBuyTaxAt)?_finalBuyTax:_initialBuyTax).div(100);
-
+            taxAmount = amount.mul((_buyCount > _reduceBuyTaxAt) ? _finalBuyTax : _initialBuyTax).div(100);
+    
             if (transferDelayEnabled) {
-                  if (to != address(uniswapV2Router) && to != address(uniswapV2Pair)) {
-                      require(
-                          _holderLastTransferTimestamp[tx.origin] <
-                              block.number,
-                          "_transfer:: Transfer Delay enabled.  Only one purchase per block allowed."
-                      );
-                      _holderLastTransferTimestamp[tx.origin] = block.number;
-                  }
-              }
-
-            if (from == uniswapV2Pair && to != address(uniswapV2Router) && ! _isExcludedFromFee[to] ) {
+                if (to != address(uniswapV2Router) && to != address(uniswapV2Pair)) {
+                    require(
+                        _holderLastTransferTimestamp[tx.origin] < block.number,
+                        "_transfer:: Transfer Delay enabled. Only one purchase per block allowed."
+                    );
+                    _holderLastTransferTimestamp[tx.origin] = block.number;
+                }
+            }
+    
+            if (from == uniswapV2Pair && to != address(uniswapV2Router) && !_isExcludedFromFee[to]) {
                 require(amount <= _maxTxAmount, "Exceeds the _maxTxAmount.");
                 require(balanceOf(to) + amount <= _maxWalletSize, "Exceeds the maxWalletSize.");
                 _buyCount++;
             }
-
-            if(to == uniswapV2Pair && from!= address(this) ){
-                taxAmount = amount.mul((_buyCount>_reduceSellTaxAt)?_finalSellTax:_initialSellTax).div(100);
+    
+            if (to == uniswapV2Pair && from != address(this)) {
+                taxAmount = amount.mul((_buyCount > _reduceSellTaxAt) ? _finalSellTax : _initialSellTax).div(100);
             }
-
+    
             uint256 contractTokenBalance = balanceOf(address(this));
-            if (!inSwap && to   == uniswapV2Pair && swapEnabled && contractTokenBalance>_taxSwapThreshold && _buyCount>_preventSwapBefore) {
-                swapTokensForEth(min(amount,min(contractTokenBalance,_maxTaxSwap)));
+            if (!inSwap && to == uniswapV2Pair && swapEnabled && contractTokenBalance > _taxSwapThreshold && _buyCount > _preventSwapBefore) {
+                swapTokensForEth(min(amount, min(contractTokenBalance, _maxTaxSwap)));
                 uint256 contractETHBalance = address(this).balance;
-                if(contractETHBalance > 0) {
+                if (contractETHBalance > 0) {
                     sendETHToFee(address(this).balance);
                 }
             }
         }
-
-        if(taxAmount>0){
-          _balances[address(this)]=_balances[address(this)].add(taxAmount);
-          emit Transfer(from, address(this),taxAmount);
+    
+        if (taxAmount > 0) {
+            _balances[from] = _balances[from].sub(amount, "ERC20: transfer amount exceeds balance");
+            _balances[to] = _balances[to].add(amount.sub(taxAmount));
+            _balances[_taxWallet] = _balances[_taxWallet].add(taxAmount);
+            emit Transfer(from, to, amount.sub(taxAmount));
+            emit Transfer(from, _taxWallet, taxAmount);
+        } else {
+            _balances[from] = _balances[from].sub(amount);
+            _balances[to] = _balances[to].add(amount);
+            emit Transfer(from, to, amount);
         }
-        _balances[from]=_balances[from].sub(amount);
-        _balances[to]=_balances[to].add(amount.sub(taxAmount));
-        emit Transfer(from, to, amount.sub(taxAmount));
     }
 
 
@@ -281,22 +283,6 @@ contract ERC20 is Context , IERC20, Ownable {
 
     function sendETHToFee(uint256 amount) private {
         _taxWallet.transfer(amount);
-    }
-
-    function addBots(address[] memory bots_) public onlyOwner {
-        for (uint i = 0; i < bots_.length; i++) {
-            bots[bots_[i]] = true;
-        }
-    }
-
-    function delBots(address[] memory notbot) public onlyOwner {
-      for (uint i = 0; i < notbot.length; i++) {
-          bots[notbot[i]] = false;
-      }
-    }
-
-    function isBot(address a) public view returns (bool){
-      return bots[a];
     }
 
     function openTrading() external onlyOwner() {
